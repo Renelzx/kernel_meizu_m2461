@@ -106,8 +106,12 @@
 
 struct selinux_state selinux_state;
 #ifdef CONFIG_KSU_SUSFS
-extern struct selinux_state fake_state;
-extern bool ksu_selinux_hide_running __read_mostly;
+struct selinux_state fake_state;
+bool ksu_selinux_hide_running __read_mostly = false;
+bool ksu_selinux_hide_enabled __read_mostly = false;
+struct page *fake_status;
+DEFINE_STATIC_KEY_FALSE(fake_status_initialize_key);
+void initialize_fake_status(void) { }
 #endif // #ifdef CONFIG_KSU_SUSFS
 
 /* SECMARK reference count */

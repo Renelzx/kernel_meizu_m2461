@@ -21,6 +21,10 @@
 #include "supercalls.h"
 #include "ksu.h"
 #include "file_wrapper.h"
+#include <linux/jump_label.h>
+
+DEFINE_STATIC_KEY_TRUE(ksu_is_input_hook_enabled);
+DEFINE_STATIC_KEY_TRUE(ksu_is_init_rc_hook_enabled);
 
 struct cred *ksu_cred;
 
