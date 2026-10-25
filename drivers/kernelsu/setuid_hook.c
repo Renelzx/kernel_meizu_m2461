@@ -42,7 +42,7 @@ static inline bool is_zygote_normal_app_uid(uid_t uid)
 
 extern u32 susfs_zygote_sid;
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-extern void susfs_run_sus_path_loop(uid_t uid);
+extern void susfs_run_sus_path_loop(void);
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 extern void susfs_reorder_mnt_id(void);
@@ -165,7 +165,7 @@ do_umount:
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-    susfs_run_sus_path_loop(new_uid);
+    susfs_run_sus_path_loop();
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 
     susfs_set_current_proc_umounted();
