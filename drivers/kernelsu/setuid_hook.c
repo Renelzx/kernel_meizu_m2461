@@ -161,11 +161,9 @@ do_umount:
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
     // We can reorder the mnt_id now after all sus mounts are umounted
-    susfs_reorder_mnt_id();
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
-    susfs_run_sus_path_loop();
 #endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 
     susfs_set_current_proc_umounted();
