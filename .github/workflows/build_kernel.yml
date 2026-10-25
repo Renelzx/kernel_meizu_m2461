@@ -58,22 +58,22 @@ jobs:
           mkdir -p out/dist
           tools/bazel run --verbose_failures //common:kernel_aarch64_dist -- --dist_dir=out/dist
 
-      - name: Buat boot.img
+      - name: Ambil boot image GKI
         working-directory: android-kernel
-        env:
-          STOCK_BOOT_URL: ${{ secrets.STOCK_BOOT_URL }}   # opsional
         run: |
-          if [ -n "$STOCK_BOOT_URL" ]; then
-            curl -fsSL "$STOCK_BOOT_URL" -o stock_boot.img
-            export STOCK_BOOT=stock_boot.img
+          ls -l out/dist | grep -iE 'boot|gki' || true
+          mkdir -p out/boot_imgs
+          if [ -f out/dist/boot-img.tar.gz ]; then
+            tar -xzf out/dist/boot-img.tar.gz -C out/boot_imgs
           fi
-          bash "$GITHUB_WORKSPACE/scripts/make_boot_img.sh"
+          cp -v out/dist/boot*.img out/boot_imgs/ 2>/dev/null || true
+          ls -l out/boot_imgs
 
       - name: Upload boot.img
         uses: actions/upload-artifact@v4
         with:
           name: boot-image
-          path: android-kernel/out/boot_new.img
+          path: android-kernel/out/boot_imgs/
 
       - name: Package with AnyKernel3
         run: |
