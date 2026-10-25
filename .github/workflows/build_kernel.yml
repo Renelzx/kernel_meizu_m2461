@@ -1,0 +1,98 @@
+name: Build GKI 6.1 FinaSU + SuSFS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - asanagi
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Free Up Disk Space
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet \
+                     /usr/local/lib/android \
+                     /opt/ghc \
+                     /opt/hostedtoolcache/CodeQL \
+                     /usr/local/share/boost \
+                     /usr/local/graalvm \
+                     /usr/local/share/powershell \
+                     /usr/share/swift
+          sudo docker image prune --all --force || true
+          df -h
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl git zip unzip bc bison flex libssl-dev libelf-dev python3 python-is-python3 rsync
+          sudo curl -sSL https://storage.googleapis.com/git-repo-downloads/repo -o /usr/local/bin/repo
+          sudo chmod a+rx /usr/local/bin/repo
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "Renelzx"
+          git config --global user.email "renelzx@users.noreply.github.com"
+          git config --global color.ui false
+
+      - name: Initialize & Sync ACK Repo
+        run: |
+          mkdir -p "${{ github.workspace }}/android-kernel"
+          cd "${{ github.workspace }}/android-kernel"
+          repo init -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1 --depth=1 < /dev/null
+          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune
+          df -h
+
+      - name: Inject Custom Kernel (Asanagi Branch)
+        run: |
+          cd "${{ github.workspace }}/android-kernel"
+          rm -rf common
+          git clone --depth=1 https://github.com/Renelzx/kernel_meizu_m2461 -b asanagi common
+
+      - name: Compile Kernel via Kleaf/Bazel
+        run: |
+          cd "${{ github.workspace }}/android-kernel"
+          export TZ="Asia/Jakarta"
+          mkdir -p out/dist
+          tools/bazel run --verbose_failures //common:kernel_aarch64_dist -- --dist_dir=out/dist
+
+      - name: Buat boot.img
+        working-directory: android-kernel
+        env:
+          STOCK_BOOT_URL: ${{ secrets.STOCK_BOOT_URL }}   # opsional
+        run: |
+          if [ -n "$STOCK_BOOT_URL" ]; then
+            curl -fsSL "$STOCK_BOOT_URL" -o stock_boot.img
+            export STOCK_BOOT=stock_boot.img
+          fi
+          bash "$GITHUB_WORKSPACE/scripts/make_boot_img.sh"
+
+      - name: Upload boot.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-image
+          path: android-kernel/out/boot_new.img
+
+      - name: Package with AnyKernel3
+        run: |
+          cd "${{ github.workspace }}/android-kernel"
+          if [ -f "out/dist/Image" ]; then
+            git clone --depth=1 https://github.com/osm0sis/AnyKernel3
+            cp out/dist/Image AnyKernel3/Image
+            sed -i 's/do.devicecheck=1/do.devicecheck=0/g' AnyKernel3/anykernel.sh
+            sed -i 's/is_slot_device=0/is_slot_device=1/g' AnyKernel3/anykernel.sh
+            rm -rf AnyKernel3/.git AnyKernel3/README.md
+            cd AnyKernel3
+            zip -r9 "${{ github.workspace }}/Kernel-Meizu21-GKI6.1-FinaSU-SuSFS-asanagi.zip" .
+          else
+            echo "Error: out/dist/Image tidak ditemukan!"
+            exit 1
+          fi
+
+      - name: Upload Flashable Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-Meizu21-GKI6.1-FinaSU-SuSFS-asanagi
+          path: ${{ github.workspace }}/Kernel-Meizu21-GKI6.1-FinaSU-SuSFS-asanagi.zip
